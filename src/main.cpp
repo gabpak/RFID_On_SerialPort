@@ -10,9 +10,19 @@
 #define SS_PIN         10         // Configurable, see typical pin layout above
 
 // LED
-#define RGB_LED_GREEN       6 // D9
-#define RGB_LED_RED         5 // D11
-#define RGB_LED_BLUE        7 // D11
+#define RGB_LED_RED         5 // D5
+#define RGB_LED_GREEN       6 // D6
+#define RGB_LED_BLUE        7 // D7
+
+/* Couleurs (format RGB) */
+const byte COLOR_BLACK = 0b000;
+const byte COLOR_RED = 0b100;
+const byte COLOR_GREEN = 0b010;
+const byte COLOR_BLUE = 0b001;
+const byte COLOR_MAGENTA = 0b101;
+const byte COLOR_CYAN = 0b011;
+const byte COLOR_YELLOW = 0b110;
+const byte COLOR_WHITE = 0b111;
 
 // OLED
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -25,15 +35,23 @@
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-
 int cardUID[4] = {0x00, 0x00, 0x00, 0x00};
 int password[4] = {0xE0, 0x2C, 0x62, 0x19}; // To modify with the database
+
+void displayColor(byte color) {
+  digitalWrite(RGB_LED_RED, !bitRead(color, 2));
+  digitalWrite(RGB_LED_GREEN, !bitRead(color, 1));
+  digitalWrite(RGB_LED_BLUE, !bitRead(color, 0));
+}
 
 void setup() {
 	Serial.begin(9600);		// Initialize serial communications with the PC
   pinMode(RGB_LED_GREEN, OUTPUT); // Set the LED pin as an output
   pinMode(RGB_LED_RED, OUTPUT); // Set the LED pin as an output
   pinMode(RGB_LED_BLUE, OUTPUT); // Set the LED pin as an output
+
+  displayColor(COLOR_BLACK);
+
   pinMode(BUZZER_PIN, OUTPUT); // Set the BUZZER pin as an output
 
 	while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
@@ -74,14 +92,14 @@ void loop() {
 
   if(cardUID[0] == password[0] && cardUID[1] == password[1] && cardUID[2] == password[2] && cardUID[3] == password[3]){
     Serial.print("Access granted\n");
-    digitalWrite(RGB_LED_GREEN, HIGH);
+    displayColor(COLOR_GREEN);
     // BUZZER
     digitalWrite(BUZZER_PIN, HIGH);
     delay(100);
     digitalWrite(BUZZER_PIN, LOW);
   } else {
     Serial.print("Access denied\n");
-    digitalWrite(RGB_LED_RED, HIGH);
+    displayColor(COLOR_RED);
     // BUZZER
     digitalWrite(BUZZER_PIN, HIGH);
     delay(1000);
@@ -107,8 +125,6 @@ void loop() {
   delay(1000); // wait for a second
 
   // Reset LED
-  digitalWrite(RGB_LED_RED, LOW);
-  digitalWrite(RGB_LED_GREEN, LOW);
-  digitalWrite(RGB_LED_BLUE, LOW);
+  displayColor(COLOR_BLACK);
 
 }
