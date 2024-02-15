@@ -4,7 +4,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-
 // RFID
 #define RST_PIN        8          // Configurable, see typical pin layout above
 #define SS_PIN         10         // Configurable, see typical pin layout above
@@ -14,7 +13,8 @@
 #define RGB_LED_GREEN       6 // D6
 #define RGB_LED_BLUE        7 // D7
 
-/* Couleurs (format RGB) */
+#define LED_NIGHT     9 // D9
+
 const byte COLOR_BLACK = 0b000;
 const byte COLOR_RED = 0b100;
 const byte COLOR_GREEN = 0b010;
@@ -32,6 +32,10 @@ const byte COLOR_WHITE = 0b111;
 // BUZZER
 #define BUZZER_PIN  4  // D4
 
+// LDR
+#define LDR_PIN   A0
+int ldrValue { 0 };
+
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -45,15 +49,30 @@ void displayColor(byte color) {
 }
 
 void setup() {
+  // Serial
 	Serial.begin(9600);		// Initialize serial communications with the PC
+
+  // ------------------------------------
+
+  // LED
   pinMode(RGB_LED_GREEN, OUTPUT); // Set the LED pin as an output
   pinMode(RGB_LED_RED, OUTPUT); // Set the LED pin as an output
   pinMode(RGB_LED_BLUE, OUTPUT); // Set the LED pin as an output
-
   displayColor(COLOR_BLACK);
 
+  // ------------------------------------
+
+  // LED NIGHT
+  pinMode(LED_NIGHT, OUTPUT); // Set the LDR pin as an input
+  // LDR_PIN
+  pinMode(LDR_PIN, INPUT); // Set the LDR pin as an input
+
+  // ------------------------------------
+
+  // BUZZER
   pinMode(BUZZER_PIN, OUTPUT); // Set the BUZZER pin as an output
 
+  // RFID
 	while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
 	SPI.begin();			// Init SPI bus
 	mfrc522.PCD_Init();		// Init MFRC522
@@ -66,14 +85,25 @@ void setup() {
   }
 }
 
+// ------------------------------------ LOOP ------------------------------------
+
 void loop() {
-	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
-	if ( ! mfrc522.PICC_IsNewCardPresent()) {
+	delay(50);
+  // LDR
+  ldrValue = analogRead(LDR_PIN);
+  if(ldrValue < 200){
+    digitalWrite(LED_NIGHT, HIGH);
+  } else {
+    digitalWrite(LED_NIGHT, LOW);
+  }
+  
+  // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
+	if (!mfrc522.PICC_IsNewCardPresent()) {
 		return;
 	}
 
 	// Select one of the cards
-	if ( ! mfrc522.PICC_ReadCardSerial()) {
+	if (!mfrc522.PICC_ReadCardSerial()) {
 		return;
 	}
 
@@ -97,6 +127,7 @@ void loop() {
     digitalWrite(BUZZER_PIN, HIGH);
     delay(100);
     digitalWrite(BUZZER_PIN, LOW);
+    delay(900);
   } else {
     Serial.print("Access denied\n");
     displayColor(COLOR_RED);
@@ -104,7 +135,6 @@ void loop() {
     digitalWrite(BUZZER_PIN, HIGH);
     delay(1000);
     digitalWrite(BUZZER_PIN, LOW);
-
   }
 
   // Clear the display buffer.
@@ -115,6 +145,7 @@ void loop() {
   display.setTextColor(SSD1306_WHITE); // Draw white text
   display.setCursor(0,0);     // Start at top-left corner
   display.print("Card UID: ");
+  
   for(int i{0}; i < 4; i++){
     display.print(cardUID[i], HEX);
   }
@@ -122,9 +153,6 @@ void loop() {
   // Display the buffer
   display.display();
 
-  delay(1000); // wait for a second
-
   // Reset LED
   displayColor(COLOR_BLACK);
-
 }
